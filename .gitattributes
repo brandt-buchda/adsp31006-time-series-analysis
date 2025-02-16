@@ -8,3 +8,7 @@
 *.sh text eol=lf
 *.bat text eol=crlf
 *.ipynb text eol=lf
+
+*.ipynb filter=nbstripout
+*.zpln filter=nbstripout
+*.ipynb diff=ipynb
