@@ -1,0 +1,10 @@
+*.ipynb	diff=jupyternotebook
+
+*.ipynb	merge=jupyternotebook
+
+* text=auto
+
+*.txt text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+*.ipynb text eol=lf
