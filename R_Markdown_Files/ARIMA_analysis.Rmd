@@ -3,3 +3,106 @@ title: "ARIMA_analysis"
 output: html_document
 ---
 
+```{r setup, include=FALSE}
+# Set proper working directory (fixes reset issue in R Markdown)
+knitr::opts_knit$set(root.dir = "C:/Users/samue/OneDrive/Documents/adsp31006-time-series-analysis")
+
+# Load necessary libraries
+library(tidyverse)
+library(lubridate)
+library(forecast)
+library(tseries)
+library(urca)
+```
+
+
+```{r}
+# Load the dataset
+data <- read.csv("C:/Users/samue/OneDrive/Documents/adsp31006-time-series-analysis/data/avg_sst_california.csv")
+
+# Check structure
+str(data)
+head(data)
+
+# Convert 'time' column to Date format
+data$time <- as.Date(data$time, format="%m/%d/%Y %H:%M")
+
+# Arrange by date
+data <- data %>% arrange(time)
+
+# Convert to time series (monthly frequency)
+ts_data <- ts(data$sst, start = c(1981, 9), frequency = 12)
+
+# Plot the time series
+autoplot(ts_data) + 
+  ggtitle("Monthly Sea Surface Temperature - California Coast") +
+  ylab("Temperature (°C)") + xlab("Year")
+
+# Get total number of observations
+n <- length(ts_data)
+
+# Train: All except last 12 months, Test: Last 12 months
+train_data <- ts(ts_data[1:(n-12)], start = c(1981, 9), frequency = 12)
+test_data  <- ts(ts_data[(n-11):n], start = c(end(ts_data)[1] - 1, end(ts_data)[2] + 1), frequency = 12)
+
+# Plot Train vs Test split (Fix autolayer issue)
+autoplot(train_data, series="Train", color="blue") +
+  autolayer(test_data, series="Test", color="red") +
+  ggtitle("Train-Test Split for SST Data") +
+  ylab("Temperature (°C)") + xlab("Year")
+```
+
+```{r}
+# Check if Box-Cox transformation is necessary
+lambda <- BoxCox.lambda(train_data)
+cat("Optimal Box-Cox lambda:", lambda, "\n")
+
+#variance is increasing overtime = heteroskedasticity
+```
+
+```{r}
+
+# Augmented Dickey-Fuller (ADF) Test on Train Data
+adf_result <- adf.test(train_data)
+print("ADF Test Result:")
+print(adf_result)
+
+# KPSS Test on Train Data
+kpss_result <- ur.kpss(train_data)
+print("KPSS Test Result:")
+summary(kpss_result)
+
+# Plot ACF and PACF for Train Data
+tsdisplay(train_data, main="ACF and PACF of Train Data")
+
+
+##Passes KPSS and ADF and says its stationary, but I think it will need seasonal differencing
+
+```
+
+
+```{r}
+# Fit the best Seasonal ARIMA model
+best_sarima <- auto.arima(train_data, seasonal=TRUE, approximation = FALSE, stepwise = FALSE)
+
+# Display model summary
+summary(best_sarima)
+
+# Check residuals
+checkresiduals(best_sarima)
+
+```
+
+```{r}
+# Fit the best Seasonal ARIMA model
+best_sarima <- auto.arima(train_data, seasonal=TRUE, lambda = 0.0844185, approximation = FALSE, stepwise = FALSE)
+
+# Display model summary
+summary(best_sarima)
+
+# Check residuals
+checkresiduals(best_sarima)
+
+```
+
+Including the box-cox lambda SUBSTANCIALLY improves the model.
