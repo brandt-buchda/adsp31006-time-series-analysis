@@ -58,38 +58,45 @@ lambda <- BoxCox.lambda(train_data)
 cat("Optimal Box-Cox lambda:", lambda, "\n")
 
 #variance is increasing overtime = heteroskedasticity
+
+train_transformed <- BoxCox(train_data, lambda = 0.0844185)
+
+# Plot transformed data
+autoplot(train_transformed) +
+  ggtitle("Box-Cox Transformed Time Series") +
+  xlab("Year") + ylab("Transformed Temperature")
 ```
 
 ```{r}
 
 # Augmented Dickey-Fuller (ADF) Test on Train Data
-adf_result <- adf.test(train_data)
+adf_result <- adf.test(train_transformed)
 print("ADF Test Result:")
 print(adf_result)
 
 # KPSS Test on Train Data
-kpss_result <- ur.kpss(train_data)
+kpss_result <- ur.kpss(train_transformed)
 print("KPSS Test Result:")
 summary(kpss_result)
 
 # Plot ACF and PACF for Train Data
-tsdisplay(train_data, main="ACF and PACF of Train Data")
+tsdisplay(train_transformed, main="ACF and PACF of Train Data")
 
 
-##Passes KPSS and ADF and says its stationary, but I think it will need seasonal differencing
+##Passes KPSS and ADF and says its stationary, but I think it will need seasonal differencing, which is obvious based on the seasonality in the ACF
 
 ```
-
-
+Seasonal Differencing
 ```{r}
-# Fit the best Seasonal ARIMA model
-best_sarima <- auto.arima(train_data, seasonal=TRUE, approximation = FALSE, stepwise = FALSE)
+# Seasonal KPSS test to check for seasonality
+seasonally_diff_train <- diff(train_transformed, lag=12)
 
-# Display model summary
-summary(best_sarima)
+par(mfrow=c(1,2))
+Acf(seasonally_diff_train, lag.max=24, main="ACF after Seasonal Differencing")
+Pacf(seasonally_diff_train, lag.max=24, main="PACF after Seasonal Differencing")
 
-# Check residuals
-checkresiduals(best_sarima)
+kpss_seasonal_test <- kpss.test(seasonally_diff_train, null = "Level")
+print(kpss_seasonal_test)
 
 ```
 
@@ -105,4 +112,4 @@ checkresiduals(best_sarima)
 
 ```
 
-Including the box-cox lambda SUBSTANCIALLY improves the model.
+
