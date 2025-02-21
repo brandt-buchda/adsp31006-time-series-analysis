@@ -112,4 +112,11 @@ checkresiduals(best_sarima)
 
 ```
 
+```{r}
+# test if residuals look like white noise
+Box.test(residuals(best_sarima), lag=12, type="Ljung-Box")
 
+
+
+```
+The residuals do not reflect white noise, so more must be done.
