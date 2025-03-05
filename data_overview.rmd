@@ -1,0 +1,38 @@
+---
+title: "Data Overview"
+output: html_document
+---
+
+```{r}
+library(tseries)
+library(forecast)
+library(TSA)
+```
+
+```{r}
+data <- read.csv('data/avg_sst_california.csv')
+
+ts_data <- ts(data$sst, start = c(1981, 9), frequency = 12)
+ts_train <- window(ts_data, start=c(1981, 9), end=c(2023, 12))
+ts_test <- window(ts_data, start=c(2024, 1), end=c(2024, 12))
+```
+
+```{r}
+tsdisplay(ts_data)
+tsdisplay(ts_train)
+tsdisplay(ts_test)
+```
+
+```{r}
+spectrum <- periodogram(ts_data)
+
+max_index <- which.max(spectrum$spec)
+max_period <- 1 / spectrum$freq[max_index]
+
+print(paste("Period with highest magnitude:", max_period))
+```
+
+```{r}
+saveRDS(ts_train, "data/ts_train.rds")
+saveRDS(ts_test, "data/ts_test.rds")
+```
