@@ -1,0 +1,46 @@
+---
+title: "Neural Net Analysis"
+output: html_document
+---
+
+```{r}
+library(tseries)
+library(forecast)
+```
+
+```{r}
+ts_train <- readRDS("data/ts_train.rds")
+ts_test <- readRDS("data/ts_test.rds")
+```
+
+```{r}
+nnar <- nnetar(ts_train, p = 24, size = 4, repeats = 128)
+
+summary(nnar)
+```
+
+```{r}
+# Forecast for the next 24 time points (e.g., months if monthly data)
+forecast_values <- forecast(nnar, h = 12)
+
+# Plot forecast
+autoplot(forecast_values)
+```
+
+```{r}
+checkresiduals(nnar)
+```
+
+```{r}
+# Plot actual test data
+plot(ts_test, type = "l", col = "black", lwd = 2, ylim = range(c(ts_test, forecast_values$mean)),
+     ylab = "Temperature", xlab = "Time", main = "Forecast vs. Actual Test Data")
+
+# Add forecasted values
+lines(forecast_values$mean, col = "red", lwd = 2, lty = 2)
+
+# Add legend
+legend("topleft", legend = c("Actual", "Forecast"), col = c("black", "red"),
+       lty = c(1, 2), lwd = 2)
+
+```

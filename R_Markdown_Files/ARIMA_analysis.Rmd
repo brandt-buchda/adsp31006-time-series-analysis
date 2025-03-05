@@ -5,7 +5,11 @@ output: html_document
 
 ```{r setup, include=FALSE}
 # Set proper working directory (fixes reset issue in R Markdown)
-knitr::opts_knit$set(root.dir = "C:/Users/samue/OneDrive/Documents/adsp31006-time-series-analysis")
+library(rprojroot)
+root <- find_root(has_file("README.md"))  # Example anchor file
+setwd(root)
+
+knitr::opts_knit$set(root.dir=getwd())
 
 # Load necessary libraries
 library(tidyverse)
@@ -19,7 +23,7 @@ library(urca)
 ```{r}
 # Load the dataset
 # data <- read.csv("C:/Users/samue/OneDrive/Documents/adsp31006-time-series-analysis/data/avg_sst_california.csv")
-data <- read.csv('/Users/alvinyao/Desktop/UChicago/Academics/2 - Winter 2025/31006 - TS Analysis & Forecasting/Final Project/adsp31006-time-series-analysis/data/avg_sst_california.csv')
+data <- read.csv('data/avg_sst_california.csv')
 
 # Check structure
 str(data)
@@ -35,9 +39,10 @@ data <- data %>% arrange(time)
 ts_data <- ts(data$sst, start = c(1981, 9), frequency = 12)
 
 # Plot the time series
-autoplot(ts_data) + 
-  ggtitle("Monthly Sea Surface Temperature - California Coast") +
-  ylab("Temperature (°C)") + xlab("Year")
+# autoplot(ts_data) +
+#   ggtitle("Monthly Sea Surface Temperature - California Coast") +
+#   ylab("Temperature (°C)") + xlab("Year")
+tsdisplay(ts_data)
 
 # Get total number of observations
 n <- length(ts_data)
@@ -47,10 +52,12 @@ train_data <- ts(ts_data[1:(n-12)], start = c(1981, 9), frequency = 12)
 test_data  <- ts(ts_data[(n-11):n], start = c(end(ts_data)[1] - 1, end(ts_data)[2] + 1), frequency = 12)
 
 # Plot Train vs Test split (Fix autolayer issue)
-autoplot(train_data, series="Train", color="blue") +
-  autolayer(test_data, series="Test", color="red") +
-  ggtitle("Train-Test Split for SST Data") +
-  ylab("Temperature (°C)") + xlab("Year")
+# autoplot(train_data, series="Train", color="blue") +
+#   autolayer(test_data, series="Test", color="red") +
+#   ggtitle("Train-Test Split for SST Data") +
+#   ylab("Temperature (°C)") + xlab("Year")
+tsdisplay(train_data)
+tsdisplay(test_data)
 ```
 
 ```{r}
@@ -63,9 +70,10 @@ cat("Optimal Box-Cox lambda:", lambda, "\n")
 train_transformed <- BoxCox(train_data, lambda = lambda)
 
 # Plot transformed data
-autoplot(train_transformed) +
-  ggtitle("Box-Cox Transformed Time Series") +
-  xlab("Year") + ylab("Transformed Temperature")
+# autoplot(train_transformed) +
+#   ggtitle("Box-Cox Transformed Time Series") +
+#   xlab("Year") + ylab("Transformed Temperature")
+tsdisplay(train_transformed)
 ```
 
 ```{r}
@@ -105,19 +113,41 @@ print(adf_seasonal_test)
 
 ```{r}
 # Fit the best Seasonal ARIMA model
-best_sarima <- auto.arima(train_transformed, seasonal=TRUE, lambda = lambda, approximation = FALSE, stepwise = FALSE)
+best_sarima <- auto.arima(train_data, seasonal=TRUE, lambda = lambda, approximation = FALSE, stepwise = FALSE)
 
 # Display model summary
 summary(best_sarima)
 
 # Check residuals
 checkresiduals(best_sarima)
+```
+```{r}
+manual_sarima <- Arima(train_data, lambda=lambda, order=c(2,0,1), seasonal=c(5,1,0))
+manual_sarima
 
+checkresiduals(manual_sarima)
+
+acf(residuals(manual_sarima), lag.max = 96)
+```
+
+```{r}
+est <- forecast(manual_sarima, h=12, lambda=lambda, biasadj=F)
+
+plot(est)
+
+plot(est$mean, type = "l", col = "blue", lwd = 2, ylim = range(c(est$mean, test_data)),
+     ylab = "Value", xlab = "Time", main = "Forecast vs Test Data")
+
+# Add the test data as a separate line
+lines(test_data, col = "red", lwd = 2)
+
+# Add a legend for clarity
+legend("topleft", legend = c("Forecast", "Test Data"), col = c("blue", "red"), lwd = 2)
 ```
 
 ```{r}
 # test if residuals look like white noise
-Box.test(residuals(best_sarima), lag=12, type="Ljung-Box")
+Box.test(residuals(manual_sarima), lag=48, type="Ljung-Box")
 ```
 The residuals do not reflect white noise, so more must be done.
 
@@ -147,9 +177,7 @@ cat("Estimated fractional differencing parameter (d):", d_estimate, "\n")
 # d_adjusted <- ifelse(is.na(d_estimate) | d_estimate >= 0.495, 0.49, d_estimate)
 
 d_adjusted <- 0.4  # Lower it slightly
-best_arfima <- arfima(train_transformed, 
-                      order = c(1, 0, 0), 
-                      lmodel = list(dfrac = d_adjusted))
+best_arfima <- forecast::arfima(seasonally_diff_train)
 
 # Fit an ARFIMA model with adjusted d
 #best_arfima <- arfima(seasonally_diff_train, lmodel = list(dfrac = d_estimate), order = c(1, 0, 1))
@@ -197,11 +225,11 @@ Moving onto Cross-Validation:
 ```{r}
 sarima_cv <- function(y, h) {
   forecast(
-    Arima(y, order = c(1,0,1), seasonal = list(order=c(2,1,0), p=12)),
+    Arima(y, lambda=lambda, order = c(2,0,1), seasonal = list(order=c(5,1,0), p=12)),
     h = h)
 }
 
-cv_errors <- tsCV(train_transformed, sarima_cv, h = 1)
+cv_errors <- tsCV(train_data, sarima_cv, h = 1)
 
 rmse <- sqrt(mean(cv_errors^2, na.rm = TRUE))
 cat("RMSE: ", rmse, "\n")
