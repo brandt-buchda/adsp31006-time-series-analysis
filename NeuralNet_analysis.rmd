@@ -15,7 +15,7 @@ ts_test <- readRDS("data/ts_test.rds")
 
 
 ```{r}
-nnar <- nnetar(ts_train, p=8, P=5)
+nnar <- nnetar(ts_train)
 summary(nnar)
 
 forecast_values <- forecast(nnar, h = 12)
@@ -26,7 +26,7 @@ autoplot(forecast_values)
 ```{r}
 checkresiduals(nnar, lag.max=60)
 
-Box.test(residuals(nnar), lag=48, type="Ljung-Box")
+Box.test(residuals(nnar), lag=120, type="Ljung-Box")
 ```
 
 ```{r}

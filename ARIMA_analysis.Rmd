@@ -61,6 +61,11 @@ tsdisplay(test_data)
 ```
 
 ```{r}
+train_data <- readRDS("data/ts_train.rds")
+test_data <- readRDS("data/ts_test.rds")
+```
+
+```{r}
 # Check if Box-Cox transformation is necessary
 lambda <- BoxCox.lambda(train_data)
 cat("Optimal Box-Cox lambda:", lambda, "\n")
@@ -119,15 +124,14 @@ best_sarima <- auto.arima(train_data, seasonal=TRUE, lambda = lambda, approximat
 summary(best_sarima)
 
 # Check residuals
-checkresiduals(best_sarima)
+checkresiduals(best_sarima, lag.max = 120)
 ```
 ```{r}
-manual_sarima <- Arima(train_data, lambda=lambda, order=c(2,0,1), seasonal=c(5,1,0))
+manual_sarima <- Arima(train_data, lambda='auto', order=c(1,0,0), seasonal=c(2,1,1))
 manual_sarima
 
-checkresiduals(manual_sarima)
+checkresiduals(manual_sarima, lag.max = 120)
 
-acf(residuals(manual_sarima), lag.max = 96)
 ```
 
 ```{r}
@@ -143,11 +147,22 @@ lines(test_data, col = "red", lwd = 2)
 
 # Add a legend for clarity
 legend("topleft", legend = c("Forecast", "Test Data"), col = c("blue", "red"), lwd = 2)
+
+
+# Calculate MAPE
+mape <- mean(abs((ts_test - est$mean) / ts_test)) * 100
+
+# Calculate RMSE
+rmse <- sqrt(mean((ts_test - est$mean)^2))
+
+# Print results
+cat("MAPE:", mape, "\n")
+cat("RMSE:", rmse, "\n")
 ```
 
 ```{r}
 # test if residuals look like white noise
-Box.test(residuals(manual_sarima), lag=48, type="Ljung-Box")
+Box.test(residuals(manual_sarima), lag=120, type="Ljung-Box")
 ```
 The residuals do not reflect white noise, so more must be done.
 
