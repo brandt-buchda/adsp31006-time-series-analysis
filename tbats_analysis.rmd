@@ -1,0 +1,55 @@
+---
+title: "Neural Net Analysis"
+output: html_document
+---
+
+```{r}
+library(tseries)
+library(forecast)
+```
+
+```{r}
+ts_train <- readRDS("data/ts_train.rds")
+ts_test <- readRDS("data/ts_test.rds")
+```
+
+
+```{r}
+tbats_model <- tbats(ts_train, lambda='auto')
+summary(tbats_model)
+
+forecast_values <- forecast(tbats_model, h = 12)
+
+autoplot(forecast_values)
+```
+
+```{r}
+checkresiduals(tbats_model, lag.max=60)
+
+Box.test(residuals(tbats_model), lag=48, type="Ljung-Box")
+```
+
+```{r}
+# Plot actual test data
+plot(ts_test, type = "l", col = "black", lwd = 2, ylim = range(c(ts_test, forecast_values$mean)),
+     ylab = "Temperature", xlab = "Time", main = "Forecast vs. Actual Test Data")
+
+# Add forecasted values
+lines(forecast_values$mean, col = "red", lwd = 2, lty = 2)
+
+# Add legend
+legend("topleft", legend = c("Actual", "Forecast"), col = c("black", "red"),
+       lty = c(1, 2), lwd = 2)
+
+
+# Calculate MAPE
+mape <- mean(abs((ts_test - forecast_values$mean) / ts_test)) * 100
+
+# Calculate RMSE
+rmse <- sqrt(mean((ts_test - forecast_values$mean)^2))
+
+# Print results
+cat("MAPE:", mape, "\n")
+cat("RMSE:", rmse, "\n")
+
+```
